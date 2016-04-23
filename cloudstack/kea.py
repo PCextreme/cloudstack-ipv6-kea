@@ -5,6 +5,7 @@ Class to generate a Kea configuration based on the CloudStack database
 import ipaddress
 from copy import deepcopy
 
+
 class Kea(object):
     """
     This class generates a Kea configuration based on information in the
@@ -43,8 +44,14 @@ class Kea(object):
             if entry['subnet'] == subnet:
                 return entry
 
-    def get_vm_reservation(self, subnetcfg, hwaddr):
-        pass
+    @staticmethod
+    def get_vm_reservation(reservations, hwaddr):
+        try:
+            for reservation in reservations:
+                if reservation['hw-address'] == hwaddr:
+                    return reservation
+        except:
+            pass
 
     def get_kea_configuration(self):
         """
@@ -55,6 +62,10 @@ class Kea(object):
 
         The rest of the configuration will stay untouched
         """
+
+        """
+        Copy the loaded configuration and then drop all subnet declarations in it
+        """
         config = deepcopy(self._config)
         config['Dhcp6']['subnet6'] = []
 
@@ -63,10 +74,17 @@ class Kea(object):
             rangecfg = (self.get_subnet_config(range['ip6cidr']))
             vms = self._conn.get_vms(range['podid'])
 
+            reservations = deepcopy(rangecfg['reservations'])
+
             rangecfg['reservations'] = []
 
             for vm in vms:
-                rangecfg['reservations'].append({'hw-address': vm['nic'][0]['macaddress']})
+                macaddr = vm['nic'][0]['macaddress']
+                reservation = self.get_vm_reservation(reservations, macaddr)
+                if reservation is not None:
+                    rangecfg['reservations'].append(reservation)
+                else:
+                    rangecfg['reservations'].append({'hw-address': macaddr})
 
             config['Dhcp6']['subnet6'].append(rangecfg)
 
