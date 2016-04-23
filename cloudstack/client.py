@@ -8,13 +8,19 @@ class CloudStackAdminDriver(CloudStackNodeDriver):
                                                     url=url,
                                                     secure=True)
 
-    def list_vlanipranges(self):
+    def list_vlanipranges(self, podid=None):
+        args = {}
+        if podid is not None:
+            args['podid'] = podid
+
         ranges = {}
-        ret = self._sync_request(command='listVlanIpRanges', method='GET')
+        ret = self._sync_request(command='listVlanIpRanges', method='GET',
+                                 params=args)
         for range in ret.get('vlaniprange'):
             try:
                 ranges[range['id']] = {'podid': range['podid'],
                                        'networkid': range['networkid'],
+                                       'gateway': range['gateway'],
                                        'ip6cidr': range['ip6cidr']}
             except KeyError:
                 pass
@@ -23,7 +29,12 @@ class CloudStackAdminDriver(CloudStackNodeDriver):
 
     def list_vms(self, podid):
         vms = []
-        ret = self._sync_request(command='listVlanIpRanges', method='GET')
+        ret = self._sync_request(command='listVirtualMachines', method='GET',
+                                 params={'podid': podid})
+        for vm in ret.get('virtualmachine'):
+            vms.append({'id': vm['id'], 'nic': vm['nic']})
+
+        return vms
 
 class Client(object):
     def __init__(self, url, apikey, secretkey):
@@ -34,3 +45,4 @@ class Client(object):
         return ranges[uuid]
 
     def get_vms(self, podid):
+        return self.conn.list_vms(podid)
