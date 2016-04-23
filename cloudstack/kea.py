@@ -2,15 +2,14 @@
 Class to generate a Kea configuration based on the CloudStack database
 """
 
+import ipaddress
+
 class Kea(object):
     """
     This class generates a Kea configuration based on information in the
-    CloudStack MySQL database.
+    CloudStack API.
 
-    The class needs to be instantiated with a open (Read-Only) MySQL connection
-    after which it can use this to generate the configuration for Kea.
-
-    The mapping has to be a dict which maps `vlan`.`uuid` to:
+    The mapping has to be a dict which mapping a VLAN UUID to:
     - Kea 'interface-id'
     - /40 subnet
 
@@ -18,20 +17,19 @@ class Kea(object):
 
     [
       '7f5bddc3-b218-421e-911e-0257a41a9ca6': {
-                                                'subnet': '2a00:f10:305::/64',
                                                 'pool': '2a00:f10:500::/40',
                                                 'interface-id': 'VLAN709'
                                               },
       '2a82ac9c-ef93-47c9-84c2-48e42f22b62a': {
-                                                'subnet': '2a00:f10:400::/64',
                                                 'pool': '2a00:f10:600::/40',
                                                 'interface-id': 'VLAN701'
                                               }
     ]
     """
-    def __init__(self, conn, mapping):
+    def __init__(self, conn, mapping, config):
         self._conn = conn
         self._mapping = mapping
+        self._config = config
 
     def get_mapping(self, uuid):
         """
@@ -39,7 +37,12 @@ class Kea(object):
         """
         return self._mapping[uuid]
 
-    def get_kea_configuration(self, config):
+    def get_subnet_config(self, subnet):
+        for entry in self._config['Dhcp6']['subnet6']:
+            if entry['subnet'] == subnet:
+                return entry
+
+    def get_kea_configuration(self):
         """
         Return a dict with Kea configuration
 
@@ -48,4 +51,10 @@ class Kea(object):
 
         The rest of the configuration will stay untouched
         """
+        config = self._config
+
+        for uuid in self._mapping:
+            range = self._conn.get_vlaniprange(uuid)
+            rangecfg = (self.get_subnet_config(range['ip6cidr']))
+
         return config
