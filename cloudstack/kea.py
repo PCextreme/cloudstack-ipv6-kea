@@ -45,6 +45,28 @@ class Kea(object):
                 return entry
 
     @staticmethod
+    def find_next_prefix(reservations, pool, prefix_len):
+        pool = ipaddress.ip_network(pool)
+        subnets = pool.subnets(prefixlen_diff=(prefix_len - pool.prefixlen))
+
+        while True:
+            subnet = next(subnets).with_prefixlen
+            try:
+                subnet = reservations.index(subnet)
+            except ValueError:
+                return subnet
+
+        return None
+
+    @staticmethod
+    def subnets_in_reservations(reservations):
+        subnets = []
+        for reservation in reservations:
+            subnets.append(reservation['prefix'])
+
+        return subnets
+
+    @staticmethod
     def get_vm_reservation(reservations, hwaddr):
         try:
             for reservation in reservations:
@@ -74,17 +96,26 @@ class Kea(object):
             rangecfg = (self.get_subnet_config(range['ip6cidr']))
             vms = self._conn.get_vms(range['podid'])
 
-            reservations = deepcopy(rangecfg['reservations'])
+            reservations = self.subnets_in_reservations(rangecfg['reservations'])
 
             rangecfg['reservations'] = []
 
+            """
+            For each VM we look for an existing reservation in the subnet
+
+            If none is found we will look for a new prefix in that subnet
+            """
             for vm in vms:
                 macaddr = vm['nic'][0]['macaddress']
                 reservation = self.get_vm_reservation(reservations, macaddr)
+
                 if reservation is not None:
                     rangecfg['reservations'].append(reservation)
                 else:
-                    rangecfg['reservations'].append({'hw-address': macaddr})
+                    prefix = self.find_next_prefix(reservations, mapping['pool'],
+                                                   mapping['prefix-len'])
+                    rangecfg['reservations'].append({'hw-address': macaddr,
+                                                     'prefix': prefix})
 
             config['Dhcp6']['subnet6'].append(rangecfg)
 
