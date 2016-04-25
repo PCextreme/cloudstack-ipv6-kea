@@ -48,12 +48,43 @@ A full example can be found in this repository.
 
 ## Generating Kea configuration
 In order to generate the Kea configuration a few things are required:
-- Read-Only MySQL access to CloudStack database
+- Admin API access to CloudStack
 - Static Mapping between CloudStack VLAN IDs and Kea's 'interface-id' setting
 - Static Mapping between CloudStack VLAN IDs and the /40 subnet to use
 
 With this information the Python code in this repository can generate a Kea configuration where it reserves a /60 subnet for each Instance
 in that network/POD.
+
+# Usage
+The tool is rather simple to use. It looks for *config.json* which configures:
+- CloudStack API access
+- Kea source configuration file
+
+Now the tool can be run:
+
+<pre>$ ./cloudstack-kea-config.py --keacfg example/kea-dhcp6.conf --config config.json</pre>
+
+If all goes well it will print to stdout a Kea configuration with the prefix information injected into it.
+
+For example:
+
+<pre>{
+  "Dhcp6": {
+    "subnet6": [
+      {
+        "interface-id": "VLAN2701",
+        "subnet": "2a05:1500:202::/64",
+        "reservations": [
+          {
+            "prefix": "2a00:f10:500::/60",
+            "hw-address": "06:51:34:00:00:5e"
+          }
+        ],
+        "reservation-mode": "out-of-pool"
+      }</pre>
+
+## config.json
+The configuration file contains the API access and the mappings. An example configuration file can be found in the repository.
 
 # Future
 In the future this has to be integrated into CloudStack. But in the meantime we use this code to have a DHCPv6 server running for IA_PD.

@@ -1,0 +1,14 @@
+{
+  "api": {
+           "url": "https://api.auroracompute.eu/tyo",
+           "apikey": "XXXX",
+           "secretkey": "YYYY"
+  },
+  "mapping": {
+      "77828509-4043-40bc-8756-7745c8ec7a99": {
+                                                "pool": "2a00:f10:500::/40",
+                                                "prefix-len": 60,
+                                                "interface-id": "VLAN2701"
+                                              }
+  }
+}
