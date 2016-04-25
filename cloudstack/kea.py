@@ -40,9 +40,12 @@ class Kea(object):
         return self._mapping[uuid]
 
     def get_subnet_config(self, subnet):
-        for entry in self._config['Dhcp6']['subnet6']:
-            if entry['subnet'] == subnet:
-                return entry
+        try:
+            for entry in self._config['Dhcp6']['subnet6']:
+                if entry['subnet'] == subnet:
+                    return entry
+        except KeyError:
+            pass
 
     @staticmethod
     def find_next_prefix(reservations, pool, prefix_len):
@@ -59,7 +62,7 @@ class Kea(object):
         return None
 
     @staticmethod
-    def subnets_in_reservations(reservations):
+    def get_reservations(reservations):
         subnets = []
         for reservation in reservations:
             subnets.append(reservation['prefix'])
@@ -86,7 +89,7 @@ class Kea(object):
         """
 
         """
-        Copy the loaded configuration and then drop all subnet declarations in it
+        Copy the loaded configuration and drop all subnet declarations in it
         """
         config = deepcopy(self._config)
         config['Dhcp6']['subnet6'] = []
@@ -94,9 +97,17 @@ class Kea(object):
         for uuid, mapping in self._mapping.items():
             range = self._conn.get_vlaniprange(uuid)
             rangecfg = (self.get_subnet_config(range['ip6cidr']))
+
+            if rangecfg is None:
+                rangecfg = {'subnet': range['ip6cidr'], 'reservations': []}
+
             vms = self._conn.get_vms(range['podid'])
 
-            reservations = self.subnets_in_reservations(rangecfg['reservations'])
+            reservations = []
+            try:
+                reservations = self.get_reservations(rangecfg['reservations'])
+            except KeyError:
+                pass
 
             rangecfg['reservations'] = []
 
@@ -116,6 +127,9 @@ class Kea(object):
                                                    mapping['prefix-len'])
                     rangecfg['reservations'].append({'hw-address': macaddr,
                                                      'prefix': prefix})
+
+                rangecfg['interface-id'] = mapping['interface-id']
+                rangecfg['reservation-mode'] = 'out-of-pool'
 
             config['Dhcp6']['subnet6'].append(rangecfg)
 
