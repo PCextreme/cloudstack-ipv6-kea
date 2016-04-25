@@ -46,6 +46,8 @@ A snippet of configuration:
 
 A full example can be found in this repository.
 
+**NOTE:*** Make sure Kea is listening on a Unicast address where DHCPv6 traffic is forwarded to by the relay agent in the routers/gateways. See the example directory for a full Kea configuration example.
+
 ## Generating Kea configuration
 In order to generate the Kea configuration a few things are required:
 - Admin API access to CloudStack
@@ -86,10 +88,67 @@ For example:
 ## config.json
 The configuration file contains the API access and the mappings. An example configuration file can be found in the repository.
 
+# DHCPv6 Relay Agent
+In the routers/gateways the DHCPv6 Relay Agent has to be configured to forward DHCPv6 traffic to Kea via Unicast.
+
+How this has to be configured depends on your routing platform.
+
+Below are some configuration examples per platform.
+
+In general the following pieces are *mandatory* regardless of the platform which is used:
+
+- Support for DHCPv6 Prefix Delegation
+- Forward DHCPv6 traffic to Unicast address where Kea listens on
+- The prefixes handed out by Kea have to be routed to the routers (Static, BGP, OSPF, etc)
+- DHCPv6 Option 37 (remote-id), [RFC4649](https://tools.ietf.org/html/rfc4649), has to be supported by the platform
+
+[RFC4649](https://tools.ietf.org/html/rfc4649) is mandatory and Kea is configured to extract the MAC address from there:
+
+<pre>{
+  "Dhcp6": {
+    "mac-sources": [
+      "remote-id"
+    ]
+  }
+}</pre>
+
+This way clients can **NOT** spoof/fake requests to the DHCPv6 server since the gateway/router inserts the MAC address into the DHCPv6 packet.
+
+CloudStack already prevents MAC spoofing so this makes it impossible to spoof requests to the DHCPv6 server.
+
+## Brocade XMR
+Will follow
+
+## Juniper MX / JunOS
+At PCextreme we use the Juniper MX960 routing platform and we configured the DHCPv6 Relay Agent as shown below:
+
+<pre>dhcp-relay {
+    dhcpv6 {
+        group VLAN709 {
+            relay-agent-interface-id {
+                use-option-82;
+            }
+            interface xe-0/1/0.709 {
+                overrides {
+                    allow-snooped-clients;
+                }
+            }
+        }
+        server-group {
+            kea-cloudstack {
+                2001:db8:100::69;
+            }
+        }
+        active-server-group kea-cloudstack;
+    }
+}</pre>
+
 # Future
 In the future this has to be integrated into CloudStack. But in the meantime we use this code to have a DHCPv6 server running for IA_PD.
 
 Kea can be fully database driven, so that might be work exploring.
 
-What will *never* change is that Kea needs to run on a seperate server. I can not run inside the Virtual Router since DHCPv6 has to be relayed through
+What will *never* change is that Kea needs to run on a seperate server. It can not run inside the Virtual Router since DHCPv6 has to be relayed through
 the routers/gateways for them to program the proper routes by inspecting the DHCPv6 Replies.
+
+Kea also has to be available on the same Unicast address because that is where the routing platform forwards traffic to.
