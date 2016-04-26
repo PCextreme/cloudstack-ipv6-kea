@@ -16,7 +16,7 @@ import sys
 
 LOGGER = logging.getLogger(__name__)
 
-HANDLER = logging.StreamHandler(sys.stdout)
+HANDLER = logging.StreamHandler(sys.stderr)
 FORMATTER = logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s',
                               datefmt='%Y-%m-%dT%H:%M:%S%Z')
 HANDLER.setFormatter(FORMATTER)
@@ -51,5 +51,9 @@ if __name__ == '__main__':
         LOGGER.error('Failed to parse config file: %s', exc)
         sys.exit(1)
 
-    keacfg = kea.get_kea_configuration()
-    print(json.dumps(keacfg, indent=2))
+    try:
+        keacfg = kea.get_kea_configuration()
+        print(json.dumps(keacfg, indent=2))
+    except Exception as exc:
+        LOGGER.error('An error occured: %s', exc)
+        sys.exit(1)
