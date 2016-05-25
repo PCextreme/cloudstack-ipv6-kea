@@ -152,3 +152,8 @@ What will *never* change is that Kea needs to run on a seperate server. It can n
 the routers/gateways for them to program the proper routes by inspecting the DHCPv6 Replies.
 
 Kea also has to be available on the same Unicast address because that is where the routing platform forwards traffic to.
+
+# Unit Testing
+Simply run the *run-tests.sh* script and it should run the Unit Tests:
+
+```$ ./run-tests.sh```
