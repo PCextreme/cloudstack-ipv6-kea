@@ -65,7 +65,8 @@ class Kea(object):
     def get_reservations(reservations):
         subnets = []
         for reservation in reservations:
-            subnets.append(reservation['prefix'])
+            for prefix in reservation['prefixes']:
+                subnets.append(prefix)
 
         return subnets
 
@@ -96,7 +97,7 @@ class Kea(object):
 
         for uuid, mapping in self._mapping.items():
             range = self._conn.get_vlaniprange(uuid)
-            rangecfg = (self.get_subnet_config(range['ip6cidr']))
+            rangecfg = self.get_subnet_config(range['ip6cidr'])
 
             if rangecfg is None:
                 rangecfg = {'subnet': range['ip6cidr'], 'reservations': []}
@@ -126,7 +127,7 @@ class Kea(object):
                     prefix = self.find_next_prefix(reservations, mapping['pool'],
                                                    mapping['prefix-len'])
                     rangecfg['reservations'].append({'hw-address': macaddr,
-                                                     'prefix': prefix})
+                                                     'prefixes': [prefix]})
 
                 rangecfg['interface-id'] = mapping['interface-id']
                 rangecfg['reservation-mode'] = 'out-of-pool'
