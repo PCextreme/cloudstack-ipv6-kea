@@ -136,12 +136,14 @@ At PCextreme we use the Juniper MX960 routing platform and we configured the DHC
         }
         server-group {
             kea-cloudstack {
-                2001:db8:100::69;
+                2001:db8::100:69;
             }
         }
         active-server-group kea-cloudstack;
     }
 }</pre>
+
+Where **2001:db8::100:69** is the IP-Address where the ISC Kea DHCPv6 server is listening on.
 
 # Future
 In the future this has to be integrated into CloudStack. But in the meantime we use this code to have a DHCPv6 server running for IA_PD.
