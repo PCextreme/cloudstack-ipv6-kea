@@ -28,8 +28,8 @@ class Kea(object):
                                               }
     ]
     """
-    def __init__(self, conn, mapping, config):
-        self._conn = conn
+    def __init__(self, ranges, mapping, config):
+        self._ranges = ranges
         self._mapping = mapping
         self._config = config
 
@@ -96,13 +96,15 @@ class Kea(object):
         config['Dhcp6']['subnet6'] = []
 
         for uuid, mapping in self._mapping.items():
-            range = self._conn.get_vlaniprange(uuid)
+            try:
+                range = self._ranges[uuid]
+            except KeyError:
+                continue
+
             rangecfg = self.get_subnet_config(range['ip6cidr'])
 
             if rangecfg is None:
                 rangecfg = {'subnet': range['ip6cidr'], 'reservations': []}
-
-            vms = self._conn.get_vms(range['podid'])
 
             reservations = []
             try:
@@ -117,7 +119,7 @@ class Kea(object):
 
             If none is found we will look for a new prefix in that subnet
             """
-            for vm in vms:
+            for vm in range['vms']:
                 macaddr = vm['nic'][0]['macaddress']
                 reservation = self.get_vm_reservation(reservations, macaddr)
 

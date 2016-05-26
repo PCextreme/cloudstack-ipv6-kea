@@ -36,13 +36,24 @@ class CloudStackAdminDriver(CloudStackNodeDriver):
 
         return vms
 
+
 class Client(object):
     def __init__(self, url, apikey, secretkey):
         self.conn = CloudStackAdminDriver(url=url, key=apikey, secret=secretkey)
 
+    def get_vlanipranges(self):
+        return self.conn.list_vlanipranges()
+
     def get_vlaniprange(self, uuid):
-        ranges = self.conn.list_vlanipranges()
-        return ranges[uuid]
+        return self.get_vlanipranges()[uuid]
 
     def get_vms(self, podid):
         return self.conn.list_vms(podid)
+
+    def get_vlans_vms(self):
+        ranges = dict()
+        for key, value in self.get_vlanipranges().items():
+            value['vms'] = self.get_vms(value['podid'])
+            ranges[key] = value
+
+        return ranges
