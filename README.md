@@ -8,7 +8,7 @@ Instances already aqcuire a IPv6 Address using Stateless Autoconfiguration (SLAA
 
 More information about IPv6 in Basic Networking can be found on [the Apache wiki](https://cwiki.apache.org/confluence/display/CLOUDSTACK/IPv6+in+Basic+Networking).
 
-# Prefix Delegation
+## Prefix Delegation
 Using IPv6 [Prefix Delegation](https://en.wikipedia.org/wiki/Prefix_delegation) (IA_PD) Instances can obtain a /60 subnet routed to them in additional do the IPv6 Address they
 already obtained through SLAAC.
 
@@ -26,7 +26,7 @@ Prefix                  Session Id  Expires  State    Interface    Client DUID
 </pre>
 
 
-# Kea Configuration
+## Kea Configuration
 Kea can be configured to hand out prefixes using IA_PD. IA_NA (Address assignment) is not used since Instances obtain their address through SLAAC.
 
 The [kea guide](http://kea.isc.org/docs/kea-guide.html) shows how reservations can be made for specific hosts so that they always obtain the proper prefix.
@@ -48,7 +48,7 @@ A full example can be found in this repository.
 
 **NOTE:*** Make sure Kea is listening on a Unicast address where DHCPv6 traffic is forwarded to by the relay agent in the routers/gateways. See the example directory for a full Kea configuration example.
 
-## Generating Kea configuration
+### Generating Kea configuration
 In order to generate the Kea configuration a few things are required:
 - Admin API access to CloudStack
 - Static Mapping between CloudStack VLAN IDs and Kea's 'interface-id' setting
@@ -57,7 +57,7 @@ In order to generate the Kea configuration a few things are required:
 With this information the Python code in this repository can generate a Kea configuration where it reserves a /60 subnet for each Instance
 in that network/POD.
 
-# Usage
+## Usage
 The tool is rather simple to use. It looks for *config.json* which configures:
 - CloudStack API access
 - Kea source configuration file
@@ -85,10 +85,10 @@ For example:
         "reservation-mode": "out-of-pool"
       }</pre>
 
-## config.json
+### config.json
 The configuration file contains the API access and the mappings. An example configuration file can be found in the repository.
 
-# DHCPv6 Relay Agent
+## DHCPv6 Relay Agent
 In the routers/gateways the DHCPv6 Relay Agent has to be configured to forward DHCPv6 traffic to Kea via Unicast.
 
 How this has to be configured depends on your routing platform.
@@ -116,10 +116,10 @@ This way clients can **NOT** spoof/fake requests to the DHCPv6 server since the 
 
 CloudStack already prevents MAC spoofing so this makes it impossible to spoof requests to the DHCPv6 server.
 
-## Brocade XMR
+### Brocade XMR
 Will follow
 
-## Juniper MX / JunOS
+### Juniper MX / JunOS
 At PCextreme we use the Juniper MX960 routing platform and we configured the DHCPv6 Relay Agent as shown below:
 
 <pre>dhcp-relay {
@@ -143,9 +143,9 @@ At PCextreme we use the Juniper MX960 routing platform and we configured the DHC
     }
 }</pre>
 
-Where **2001:db8::100:69** is the IP-Address where the ISC Kea DHCPv6 server is listening on.
+Where `2001:db8::100:69` is the IP-Address where the ISC Kea DHCPv6 server is listening on.
 
-# Future
+## Future
 In the future this has to be integrated into CloudStack. But in the meantime we use this code to have a DHCPv6 server running for IA_PD.
 
 Kea can be fully database driven, so that might be work exploring.
@@ -155,7 +155,7 @@ the routers/gateways for them to program the proper routes by inspecting the DHC
 
 Kea also has to be available on the same Unicast address because that is where the routing platform forwards traffic to.
 
-# Unit Testing
+## Unit Testing
 Simply run the *run-tests.sh* script and it should run the Unit Tests:
 
 ```$ ./run-tests.sh```
