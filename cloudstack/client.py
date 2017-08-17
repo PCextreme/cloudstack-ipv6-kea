@@ -31,6 +31,9 @@ class CloudStackAdminDriver(CloudStackNodeDriver):
         vms = []
         ret = self._sync_request(command='listVirtualMachines', method='GET',
                                  params={'podid': podid})
+        if not ret:
+            return vms
+
         for vm in ret.get('virtualmachine'):
             vms.append({'id': vm['id'], 'nic': vm['nic']})
 
