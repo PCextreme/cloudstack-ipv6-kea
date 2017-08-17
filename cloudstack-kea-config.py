@@ -40,8 +40,8 @@ if __name__ == '__main__':
         client = cloudstack.client.Client(url=config['api']['url'],
                                           apikey=config['api']['apikey'],
                                           secretkey=config['api']['secretkey'])
-        ranges = client.get_vlans_vms()
-        kea = cloudstack.kea.Kea(ranges, config['mapping'], keacfg)
+        vms = client.get_pod_vms(config['mapping'])
+        kea = cloudstack.kea.Kea(vms, config['mapping'], keacfg)
     except FileNotFoundError as exc:
         LOGGER.error('File does not exist: %s', exc)
         sys.exit(1)

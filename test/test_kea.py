@@ -1,36 +1,26 @@
 import unittest
-import json
 from cloudstack import Kea
 
 
 class TestKea(unittest.TestCase):
     def setUp(self):
 
-        ranges = {'77828509-4043-40bc-8756-7745c8ec7a99':
-                      {'vms': [{'nic':
-                                    [{'type': 'Shared',
-                                      'traffictype': 'Guest',
-                                      'id': '33f1542c-1da7-405f-b600-18356b329f48',
-                                      'networkid': '4f6c99d1-991f-4c67-80ab-54f8cbccf60c',
-                                      'secondaryip': [],
-                                      'ipaddress': '192.168.0.100',
-                                      'broadcasturi': 'vlan://untagged',
-                                      'isdefault': True,
-                                      'macaddress': '06:32:b2:00:04:79',
-                                      'gateway': '192.168.0.1',
-                                      'netmask': '255.255.255.0',
-                                      'networkname': 'defaultGuestNetwork'}],
-                                'id': '859eca81-1052-4bb5-a9e3-d685a550e1bd'}],
-                       'podid': 'b16a92f4-9b18-4e24-857f-0d48f7dde298',
-                       'ip6cidr': '2001:db8:200::/64',
-                       'gateway': '192.168.0.1',
-                       'networkid': '4f6c99d1-991f-4c67-80ab-54f8cbccf60c'}}
+        vms = {'77828509-4043-40bc-8756-7745c8ec7a99':
+                      [
+                          {
+                              'id': '2cc3c52d-ac5c-4730-a3c6-30f11b7a0763',
+                              'macaddress': '06:32:b2:00:04:79',
+                              'ip6address': '2001:db8:200::1'
+                          }
+                      ]
+        }
 
         mapping = {
                     '77828509-4043-40bc-8756-7745c8ec7a99': {
                                                 "pool": "2001:db8:ff00::/40",
                                                 "prefix-len": 60,
-                                                "interface-id": "VLAN200"
+                                                "interface-id": "VLAN200",
+                                                "ip6-cidr": "2001:db8:200::/64"
                                               },
                     '1b8400f3-2eac-45b1-8f55-9d9ff162a1d8': {
                                                 "pool": "2001:db8:aa00::/40",
@@ -96,12 +86,13 @@ class TestKea(unittest.TestCase):
             }
         }
 
-        self.kea = Kea(ranges=ranges, mapping=mapping, config=config)
+        self.kea = Kea(vms=vms, mapping=mapping, config=config)
 
     def test_get_mapping(self):
         mapping = self.kea.get_mapping('77828509-4043-40bc-8756-7745c8ec7a99')
         self.assertEqual(mapping['interface-id'], 'VLAN200')
         self.assertEqual(mapping['pool'], '2001:db8:ff00::/40')
+        self.assertEqual(mapping['ip6-cidr'], '2001:db8:200::/64')
         self.assertEqual(mapping['prefix-len'], 60)
 
     def test_get_subnet_config(self):
@@ -119,6 +110,48 @@ class TestKea(unittest.TestCase):
                                            mapping['prefix-len'])
         self.assertEqual(prefix, '2001:db8:ff00:50::/60')
 
+    def test_find_next_reservations(self):
+        pool = '2001:db8:100::/40'
+        prefix_len = 60
+        reservations = list()
+        reservations.append('2001:db8:100::/60')
+
+        next = self.kea.find_next_prefix(reservations, pool, prefix_len)
+        reservations.append(next)
+        self.assertEqual(next, '2001:db8:100:10::/60')
+
+        reservations.append('2001:db8:100:20::/60')
+        reservations.append('2001:db8:100:30::/60')
+
+        next = self.kea.find_next_prefix(reservations, pool, prefix_len)
+        reservations.append(next)
+        self.assertEqual(next, '2001:db8:100:40::/60')
+
+        next = self.kea.find_next_prefix(reservations, pool, prefix_len)
+        reservations.append(next)
+        self.assertEqual(next, '2001:db8:100:50::/60')
+
+        next = self.kea.find_next_prefix(reservations, pool, prefix_len)
+        reservations.append(next)
+        self.assertEqual(next, '2001:db8:100:60::/60')
+
+        reservations.append('2001:db8:100:90::/60')
+
+        next = self.kea.find_next_prefix(reservations, pool, prefix_len)
+        reservations.append(next)
+        self.assertEqual(next, '2001:db8:100:70::/60')
+
+        next = self.kea.find_next_prefix(reservations, pool, prefix_len)
+        reservations.append(next)
+        self.assertEqual(next, '2001:db8:100:80::/60')
+
+        for i in range(0, 100):
+            next = self.kea.find_next_prefix(reservations, pool, prefix_len)
+            reservations.append(next)
+
+        next = self.kea.find_next_prefix(reservations, pool, prefix_len)
+        self.assertEqual(next, '2001:db8:100:6e0::/60')
+
     def test_get_kea_config(self):
         keacfg = self.kea.get_kea_configuration()
         self.assertEqual(keacfg['Dhcp6']['subnet6'][0]['subnet'],
@@ -126,7 +159,7 @@ class TestKea(unittest.TestCase):
         self.assertEqual(keacfg['Dhcp6']['subnet6'][0]['reservations'][0]['hw-address'],
                          '06:32:b2:00:04:79')
         self.assertEqual(keacfg['Dhcp6']['subnet6'][0]['reservations'][0]['prefixes'][0],
-                         '2001:db8:ff00:50::/60')
+                         '2001:db8:ff00::/60')
 
 if __name__ == '__main__':
     unittest.main()

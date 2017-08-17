@@ -28,8 +28,8 @@ class Kea(object):
                                               }
     ]
     """
-    def __init__(self, ranges, mapping, config):
-        self._ranges = ranges
+    def __init__(self, vms, mapping, config):
+        self._vms = vms
         self._mapping = mapping
         self._config = config
 
@@ -54,9 +54,7 @@ class Kea(object):
 
         while True:
             subnet = next(subnets).with_prefixlen
-            try:
-                subnet = reservations.index(subnet)
-            except ValueError:
+            if subnet not in reservations:
                 return subnet
 
         return None
@@ -95,45 +93,57 @@ class Kea(object):
         config = deepcopy(self._config)
         config['Dhcp6']['subnet6'] = []
 
-        for uuid, mapping in self._mapping.items():
+        for podid, mapping in self._mapping.items():
             try:
-                range = self._ranges[uuid]
+                pod_vms = self._vms[podid]
             except KeyError:
                 continue
 
-            rangecfg = self.get_subnet_config(range['ip6cidr'])
+            podcfg = self.get_subnet_config(mapping['ip6-cidr'])
 
-            if rangecfg is None:
-                rangecfg = {'subnet': range['ip6cidr'], 'reservations': []}
+            if podcfg is None:
+                podcfg = {'subnet': mapping['ip6-cidr'],
+                          'interface-id':  mapping['interface-id'],
+                          'reservation-mode': 'out-of-pool',
+                          'reservations': []}
 
             reservations = []
             try:
-                reservations = self.get_reservations(rangecfg['reservations'])
+                reservations = self.get_reservations(podcfg['reservations'])
             except KeyError:
                 pass
 
-            rangecfg['reservations'] = []
+            new_reservations = []
 
             """
             For each VM we look for an existing reservation in the subnet
 
             If none is found we will look for a new prefix in that subnet
             """
-            for vm in range['vms']:
-                macaddr = vm['nic'][0]['macaddress']
-                reservation = self.get_vm_reservation(reservations, macaddr)
+            for vm in pod_vms:
+                macaddr = vm['macaddress']
+                reservation = self.get_vm_reservation(podcfg['reservations'],
+                                                      macaddr)
 
                 if reservation is not None:
-                    rangecfg['reservations'].append(reservation)
+                    for prefix in reservation['prefixes']:
+                        reservations.append(prefix)
+
+                    prefixes = reservation['prefixes']
                 else:
-                    prefix = self.find_next_prefix(reservations, mapping['pool'],
+                    prefix = self.find_next_prefix(set(reservations),
+                                                   mapping['pool'],
                                                    mapping['prefix-len'])
-                    rangecfg['reservations'].append({'hw-address': macaddr,
-                                                     'prefixes': [prefix]})
+                    reservations.append(prefix)
+                    prefixes = [prefix]
 
-                rangecfg['interface-id'] = mapping['interface-id']
-                rangecfg['reservation-mode'] = 'out-of-pool'
+                if prefixes:
+                    reservation = {'hw-address': macaddr,
+                                   'prefixes': prefixes,
+                                   'ip-addresses': [vm['ip6address']]}
+                    new_reservations.append(reservation)
 
-            config['Dhcp6']['subnet6'].append(rangecfg)
+            podcfg['reservations'] = new_reservations
+            config['Dhcp6']['subnet6'].append(podcfg)
 
         return config

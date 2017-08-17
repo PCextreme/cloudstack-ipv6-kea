@@ -30,12 +30,15 @@ class CloudStackAdminDriver(CloudStackNodeDriver):
     def list_vms(self, podid):
         vms = []
         ret = self._sync_request(command='listVirtualMachines', method='GET',
-                                 params={'podid': podid})
+                                 params={'podid': podid, 'listall': True})
         if not ret:
             return vms
 
         for vm in ret.get('virtualmachine'):
-            vms.append({'id': vm['id'], 'nic': vm['nic']})
+            try:
+                vms.append({'id': vm['id'], 'macaddress': vm['nic'][0]['macaddress'], 'ip6address': vm['nic'][0]['ip6address']})
+            except KeyError:
+                pass
 
         return vms
 
@@ -52,6 +55,13 @@ class Client(object):
 
     def get_vms(self, podid):
         return self.conn.list_vms(podid)
+
+    def get_pod_vms(self, mapping):
+        vms = dict()
+        for podid in mapping:
+            vms[podid] = self.get_vms(podid)
+
+        return vms
 
     def get_vlans_vms(self):
         ranges = dict()
