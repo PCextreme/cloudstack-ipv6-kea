@@ -8,7 +8,8 @@
       "77828509-4043-40bc-8756-7745c8ec7a99": {
                                                 "pool": "2001:db8:200::/40",
                                                 "prefix-len": 60,
-                                                "interface-id": "VLAN2701"
+                                                "interface-id": "VLAN2701",
+                                                "ip6-cidr": "2001:db8:100::/64"
                                               }
   }
 }
